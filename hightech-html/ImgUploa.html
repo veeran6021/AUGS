@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Photo Uploader</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            text-align: center;
+            margin: 20px;
+        }
+
+        #image-input {
+            display: none;
+        }
+
+        #upload-button {
+            padding: 10px;
+            background-color: #4caf50;
+            color: white;
+            cursor: pointer;
+        }
+
+        #image-container {
+            margin-top: 20px;
+        }
+
+        .image-wrapper {
+            position: relative;
+            display: inline-block;
+        }
+
+        img {
+            width: 200px;
+            height: 150px;
+            object-fit: cover;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin: 10px;
+        }
+
+        .delete-button {
+            background-color: #ff0000;
+            color: white;
+            border: none;
+            padding: 5px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+
+        .note-input {
+            width: 200px;
+            padding: 5px;
+            margin-top: 5px;
+            box-sizing: border-box;
+        }
+    </style>
+</head>
+<body>
+    <input type="file" id="image-input" accept="image/*">
+    <button id="upload-button">Upload Photo</button>
+    <div id="image-container"></div>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const imageInput = document.getElementById("image-input");
+            const uploadButton = document.getElementById("upload-button");
+            const imageContainer = document.getElementById("image-container");
+
+            uploadButton.addEventListener("click", function () {
+                imageInput.click();
+            });
+
+            imageInput.addEventListener("change", function () {
+                const file = imageInput.files[0];
+
+                if (file) {
+                    uploadAndDisplayImage(file);
+                }
+            });
+
+            // Load existing images on page load
+            fetchImages();
+
+            function uploadAndDisplayImage(file) {
+                const reader = new FileReader();
+
+                reader.onload = function (e) {
+                    const imageUrl = e.target.result;
+
+                    const imageWrapper = document.createElement("div");
+                    imageWrapper.classList.add("image-wrapper");
+
+                    const imgElement = document.createElement("img");
+                    imgElement.src = imageUrl;
+
+                    const deleteButton = createButton("Delete", "delete-button", function () {
+                        deleteImage(imageWrapper);
+                    });
+
+                    const noteInput = document.createElement("textarea");
+                    noteInput.placeholder = "Add a note...";
+                    noteInput.classList.add("note-input");
+
+                    imageWrapper.appendChild(imgElement);
+                    imageWrapper.appendChild(deleteButton);
+                    imageWrapper.appendChild(noteInput);
+
+                    imageContainer.appendChild(imageWrapper);
+
+                    // Save the image information in localStorage for permanent display
+                    saveImageToLocalStorage(imageUrl, noteInput.value);
+                };
+
+                reader.readAsDataURL(file);
+            }
+
+            function createButton(text, className, onClick) {
+                const button = document.createElement("button");
+                button.innerHTML = text;
+                button.classList.add(className);
+                button.addEventListener("click", onClick);
+                return button;
+            }
+
+            function deleteImage(imageWrapper) {
+                imageWrapper.remove();
+
+                // Optionally, remove the image information from localStorage
+                removeFromLocalStorage(imageWrapper.querySelector('img').src);
+            }
+
+            function saveImageToLocalStorage(imageUrl, notes) {
+                // Retrieve existing image information from localStorage
+                const existingImages = JSON.parse(localStorage.getItem("images")) || [];
+
+                // Add the new image information
+                existingImages.push({ imageUrl, notes });
+
+                // Save the updated array back to localStorage
+                localStorage.setItem("images", JSON.stringify(existingImages));
+            }
+
+            function removeFromLocalStorage(imageUrl) {
+                // Retrieve existing image information from localStorage
+                const existingImages = JSON.parse(localStorage.getItem("images")) || [];
+
+                // Remove the specified image information
+                const updatedImages = existingImages.filter(imgInfo => imgInfo.imageUrl !== imageUrl);
+
+                // Save the updated array back to localStorage
+                localStorage.setItem("images", JSON.stringify(updatedImages));
+            }
+
+            function fetchImages() {
+                // Retrieve existing image information from localStorage
+                const existingImages = JSON.parse(localStorage.getItem("images")) || [];
+
+                // Display the existing images
+                existingImages.forEach(imgInfo => {
+                    const imageWrapper = document.createElement("div");
+                    imageWrapper.classList.add("image-wrapper");
+
+                    const imgElement = document.createElement("img");
+                    imgElement.src = imgInfo.imageUrl;
+
+                    const deleteButton = createButton("Delete", "delete-button", function () {
+                        deleteImage(imageWrapper);
+                    });
+
+                    const noteInput = document.createElement("textarea");
+                    noteInput.value = imgInfo.notes || "";
+                    noteInput.placeholder = "Add a note...";
+                    noteInput.classList.add("note-input");
+
+                    imageWrapper.appendChild(imgElement);
+                    imageWrapper.appendChild(deleteButton);
+                    imageWrapper.appendChild(noteInput);
+
+                    imageContainer.appendChild(imageWrapper);
+                });
+            }
+        });
+    </script>
+</body>
+</html>

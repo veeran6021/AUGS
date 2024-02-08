@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AUGS:ImgUpload</title>
+<h1>Post Your Problem</h1>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        #contentContainer {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .contentContainer {
+            border: 1px solid #ccc;
+            padding: 10px;
+            position: relative;
+        }
+        img {
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 10px;
+        }
+        audio {
+            width: 100%;
+            margin-bottom: 10px;
+        }
+        .deleteButton {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            cursor: pointer;
+            color: red;
+        }
+    </style>
+</head>
+<body>
+
+<!-- Input for Image Upload -->
+<input type="file" id="imageInput" accept="image/*">
+<button onclick="uploadImage()">Upload Image</button>
+
+<!-- Input for Text Notes -->
+<textarea id="noteInput" placeholder="Enter text note"></textarea>
+<button onclick="saveTextNote()">Save Text Note</button>
+
+<!-- Input for Voice Messages -->
+<button onclick="startRecording()">Start Recording</button>
+<button onclick="stopRecording()">Stop Recording</button>
+
+<!-- Display Uploaded Images, Text Notes, and Voice Messages -->
+<div id="contentContainer"></div>
+
+<script>
+    let mediaRecorder;
+    let audioChunks = [];
+    let isRecording = false;
+
+    function startRecording() {
+        navigator.mediaDevices.getUserMedia({ audio: true })
+            .then(stream => {
+                mediaRecorder = new MediaRecorder(stream);
+                mediaRecorder.ondataavailable = event => {
+                    if (event.data.size > 0) {
+                        audioChunks.push(event.data);
+                    }
+                };
+                mediaRecorder.onstop = () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/wav' });
+                    const audioUrl = URL.createObjectURL(audioBlob);
+
+                    const container = document.getElementById('contentContainer');
+                    const contentContainer = document.createElement('div');
+                    contentContainer.classList.add('contentContainer');
+
+                    const audioElement = document.createElement('audio');
+                    audioElement.controls = true;
+                    audioElement.src = audioUrl;
+                    contentContainer.appendChild(audioElement);
+
+                    // Add delete button for the voice message
+                    const deleteVoiceMessageBtn = document.createElement('span');
+                    deleteVoiceMessageBtn.classList.add('deleteButton');
+                    deleteVoiceMessageBtn.textContent = 'Delete Voice Message';
+                    deleteVoiceMessageBtn.onclick = function () {
+                        container.removeChild(contentContainer);
+                        saveContent();
+                    };
+                    contentContainer.appendChild(deleteVoiceMessageBtn);
+
+                    container.appendChild(contentContainer);
+                    saveContent();
+
+                    // Reset recording variables
+                    audioChunks = [];
+                    mediaRecorder = null;
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+            })
+            .catch(error => console.error('Error accessing microphone:', error));
+    }
+
+    function stopRecording() {
+        if (isRecording && mediaRecorder) {
+            mediaRecorder.stop();
+            isRecording = false;
+        }
+    }
+
+    // Function to handle image upload
+    function uploadImage() {
+        const input = document.getElementById('imageInput');
+        const container = document.getElementById('contentContainer');
+
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+
+            reader.onload = function (e) {
+                const contentContainer = document.createElement('div');
+                contentContainer.classList.add('contentContainer');
+
+                const image = document.createElement('img');
+                image.src = e.target.result;
+                contentContainer.appendChild(image);
+
+                // Add delete button for the image
+                const deleteImageBtn = document.createElement('span');
+                deleteImageBtn.classList.add('deleteButton');
+                deleteImageBtn.textContent = 'Delete Image';
+                deleteImageBtn.onclick = function () {
+                    container.removeChild(contentContainer);
+                    saveContent();
+                };
+                contentContainer.appendChild(deleteImageBtn);
+
+                container.appendChild(contentContainer);
+                saveContent();
+            };
+
+            reader.readAsDataURL(input.files[0]);
+        }
+    }
+
+    // Function to save text notes
+    function saveTextNote() {
+        const noteInput = document.getElementById('noteInput');
+        const container = document.getElementById('contentContainer');
+        const noteText = noteInput.value.trim();
+
+        if (noteText !== '') {
+            const contentContainer = document.createElement('div');
+            contentContainer.classList.add('contentContainer');
+
+            const textNoteDiv = document.createElement('div');
+            textNoteDiv.textContent = noteText;
+            contentContainer.appendChild(textNoteDiv);
+
+            // Add delete button for the text note
+            const deleteTextNoteBtn = document.createElement('span');
+            deleteTextNoteBtn.classList.add('deleteButton');
+            deleteTextNoteBtn.textContent = 'Delete Text Note';
+            deleteTextNoteBtn.onclick = function () {
+                container.removeChild(contentContainer);
+                saveContent();
+            };
+            contentContainer.appendChild(deleteTextNoteBtn);
+
+            container.appendChild(contentContainer);
+
+            // Clear the input field after saving
+            noteInput.value = '';
+            saveContent();
+        }
+    }
+
+    // Load existing content from local storage
+    function loadContent() {
+        const container = document.getElementById('contentContainer');
+        const savedContent = JSON.parse(localStorage.getItem('content')) || [];
+
+        savedContent.forEach(contentItem => {
+            const contentContainer = document.createElement('div');
+            contentContainer.classList.add('contentContainer');
+
+            if (contentItem.type === 'image') {
+                const image = document.createElement('img');
+                image.src = contentItem.data;
+                contentContainer.appendChild(image);
+
+                // Add delete button for the image
+                const deleteImageBtn = document.createElement('span');
+                deleteImageBtn.classList.add('deleteButton');
+                deleteImageBtn.textContent = 'Delete Image';
+                deleteImageBtn.onclick = function () {
+                    container.removeChild(contentContainer);
+                    saveContent();
+                };
+                contentContainer.appendChild(deleteImageBtn);
+            } else if (contentItem.type === 'text') {
+                const textNoteDiv = document.createElement('div');
+                textNoteDiv.textContent = contentItem.data;
+                contentContainer.appendChild(textNoteDiv);
+
+                // Add delete button for the text note
+                const deleteTextNoteBtn = document.createElement('span');
+                deleteTextNoteBtn.classList.add('deleteButton');
+                deleteTextNoteBtn.textContent = 'Delete Text Note';
+                deleteTextNoteBtn.onclick = function () {
+                    container.removeChild(contentContainer);
+                    saveContent();
+                };
+                contentContainer.appendChild(deleteTextNoteBtn);
+            } else if (contentItem.type === 'voice') {
+                const audioElement = document.createElement('audio');
+                audioElement.controls = true;
+                audioElement.src = contentItem.data;
+                contentContainer.appendChild(audioElement);
+
+                // Add delete button for the voice message
+                const deleteVoiceMessageBtn = document.createElement('span');
+                deleteVoiceMessageBtn.classList.add('deleteButton');
+                deleteVoiceMessageBtn.textContent = 'Delete Voice Message';
+                deleteVoiceMessageBtn.onclick = function () {
+                    container.removeChild(contentContainer);
+                    saveContent();
+                };
+                contentContainer.appendChild(deleteVoiceMessageBtn);
+            }
+
+            container.appendChild(contentContainer);
+        });
+    }
+
+    // Save content to local storage
+    function saveContent() {
+        const container = document.getElementById('contentContainer');
+        const contentItems = [];
+
+        container.childNodes.forEach(contentContainer => {
+            if (contentContainer.nodeName.toLowerCase() === 'div') {
+                const contentItem = {};
+
+                if (contentContainer.firstChild.nodeName.toLowerCase() === 'img') {
+                    contentItem.type = 'image';
+                    contentItem.data = contentContainer.firstChild.src;
+                } else if (contentContainer.firstChild.nodeName.toLowerCase() === 'div') {
+                    contentItem.type = 'text';
+                    contentItem.data = contentContainer.firstChild.textContent;
+                } else if (contentContainer.firstChild.nodeName.toLowerCase() === 'audio') {
+                    contentItem.type = 'voice';
+                    contentItem.data = contentContainer.firstChild.src;
+                }
+
+                contentItems.push(contentItem);
+            }
+        });
+
+        localStorage.setItem('content', JSON.stringify(contentItems));
+    }
+
+    // Load existing content when the page loads
+    window.onload = function () {
+        loadContent();
+    };
+</script>
+
+</body>
+</html>
